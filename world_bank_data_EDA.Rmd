@@ -1,0 +1,324 @@
+---
+title: "Exploring World Bank Data"
+author: "Georgianna James"
+output: github_document
+---
+
+## Load necessary libraries
+
+```{r required packages, echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(knitr)
+
+
+theme_set(theme_classic())
+```
+
+
+## Write a function to import the data files
+
+
+```{r function}
+# writing function to tidy data
+
+import_and_tidy <- function(filepath) {
+  read_csv(filepath, skip = 4) %>%
+    pivot_longer(c(5:64), names_to = "Year", values_to = "Value") %>%
+    pivot_wider(names_from = "Indicator Name", values_from = "Value") %>%
+    select(-"...65") %>%
+    select(c(
+      "Country Name",
+      "Year",
+      "Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)",
+      "GDP (current US$)", "GDP per capita (constant 2010 US$)"
+    ))
+}
+```
+
+
+
+## Import the data
+
+
+```{r import}
+filepaths <- dir(path = "data_world_bank", pattern = "*.csv", full.names = TRUE)
+```
+
+
+```{r mapping message=FALSE, include=FALSE, cache=TRUE}
+world_bank_data <- map_df(filepaths, import_and_tidy)
+```
+
+
+## Explore the data
+
+I am interested in looking at the relationship between female labor participation and GDP. For that reason, I have selected the following variables. 
+
+1) Country Name
+2) Year
+3) Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)
+4) GDP (current US$)
+5) GDP per capita (constant 2010 US$)
+
+I will be investigating this relationship within the following countries:
+
+1) United States
+2) United Kingdom
+3) India
+4) China
+
+```{r }
+summary(world_bank_data)
+```
+
+### Interpreting summary of my variables of interest
+
+In the entire world bank data set, there is a mean female labor participation rate of 56% and a mean GDP (in current USD) of 174.3 billion. I am interested in the relationship between these two variables, as I assume higher female labor participation is associated with higher GDP. 
+
+
+
+
+Now, I am going to explore this relationship in four countries: China, UK, US, and India. 
+
+```{r include=FALSE}
+world_bank_data_exploration <- world_bank_data %>%
+  filter(`Country Name` == "China" |
+    `Country Name` == "United Kingdom" |
+    `Country Name` == "India" |
+    `Country Name` == "United States") %>%
+  filter(Year >= 1990)
+
+head(world_bank_data_exploration)
+```
+
+### First, let's look at GDP over time:
+
+```{r echo=FALSE}
+world_bank_data_exploration %>%
+  ggplot(aes(
+    x = Year,
+    y = `GDP (current US$)`
+  )) +
+  geom_line(aes(color = `Country Name`)) +
+  labs(
+    title = "Gross Domestic Product Over Time",
+    subtitle = "In countries: China, India, US & UK",
+    x = "Year",
+    y = "GDP in Current USD",
+    caption = "Source: World Bank Data"
+  ) +
+  scale_x_discrete(breaks = c(1990, 2000, 2010, 2019)) 
+
+```
+
+
+
+GDP appears to grow overtime in all four of these countries, most steadily in the US. China sees a sharp increase around 2010 and rapid growth following. The UK has surprisingly low GDP over this time period, similar to that of India. 
+
+### And female labor participation over time:
+
+```{r echo=FALSE}
+world_bank_data_exploration %>%
+  ggplot(aes(
+    x = Year,
+    y = `Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)`
+  )) +
+  geom_line(aes(color = `Country Name`)) +
+  labs(
+    title = "Female Labor Force Participation Over Time",
+    subtitle = "In countries: China, India, US & UK",
+    x = "Year",
+    y = "Female Labor Participation Rate",
+    caption = "Source: World Bank Data"
+  ) +
+  scale_x_discrete(breaks = c(1990, 2000, 2010, 2019)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+```
+
+
+
+
+While GDP clearly grows over time, it is harder to detect a clear trend in the female labor participation rate, which seems to even decrease in some countries. This may be due to the large amount of missing variables in this column.  
+
+Because of the high volume of missing values in my variables of interest, it is challenging to compare these two graphically. I will look at a few other countries to see if I can compare the two variables. 
+
+I will take a look at Japan, Canada, and Brazil. 
+
+```{r include=FALSE}
+world_bank_data_exploration2 <- world_bank_data %>%
+  filter(`Country Name` == "Japan" |
+    `Country Name` == "Canada" |
+    `Country Name` == "Brazil") %>%
+  filter(Year >= 1990)
+
+head(world_bank_data_exploration2)
+```
+
+```{r echo=FALSE}
+world_bank_data_exploration2 %>%
+  ggplot(aes(
+    x = Year,
+    y = `GDP (current US$)`
+  )) +
+  geom_line(aes(color = `Country Name`)) +
+  labs(
+    title = "Gross Domestic Product Over Time",
+    subtitle = "In countries: Japan, Canada, Brazil",
+    x = "Year",
+    y = "GDP in Current USD",
+    caption = "Source: World Bank Data"
+  ) +
+  scale_x_discrete(breaks = c(1990, 2000, 2010, 2019)) 
+```
+
+
+
+
+
+We see a similar trend of GDP growth over time in these 3 countries. Japan experience unique fluctuation over this time period, but maintains a high comparative GDP throughout. Brazil and Canada exhibit extremely similar GDP growth over time. 
+
+```{r echo=FALSE}
+world_bank_data_exploration2 %>%
+  ggplot(aes(
+    x = Year,
+    y = `Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)`
+  )) +
+  geom_line(aes(color = `Country Name`)) +
+  labs(
+    title = "Female Labor Force Participation Over Time",
+    subtitle = "In countries: Japan, Canada, Brazil",
+    x = "Year",
+    y = "Female Labor Participation Rate",
+    caption = "Source: World Bank Data"
+  ) +
+  scale_x_discrete(breaks = c(1990, 2000, 2010, 2019)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+```
+
+
+While I hit a similar problem with these three countries, that the missing values make it difficult to compare these variables on one graph, its a little easier to compare the trends of thesetwo variables within these countries. It looks like that both female labor participation and GDP are increasing over time, which makes sense. Generally speaking, as more people enter the labor force, the GDP should increase.
+
+Perhaps if I can group by decade, I might be able to overcome this obstacle of missing data.
+
+```{r echo=FALSE}
+Japan <- world_bank_data_exploration2 %>%
+  filter(`Country Name` == "Japan") %>%
+  # creating decade column
+  mutate(decade = case_when(
+    Year >= 1990 & Year < 2000 ~ 1900,
+    Year >= 2000 & Year < 2010 ~ 2000,
+    Year >= 2010 ~ 2010
+  )) %>%
+  group_by(decade) %>%
+  summarise(avg_GDP_per_decade = mean(`GDP (current US$)`, na.rm = TRUE), avg_female_labor_per_decade = mean(`Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)`, na.rm = TRUE))
+
+Japan %>%
+  ggplot(aes(
+    y = avg_GDP_per_decade,
+    x = avg_female_labor_per_decade,
+  )) +
+  geom_point() +
+  geom_smooth() +
+  labs(
+    title = "Avgerage Female Labor Participation versus Average GDP Per Decade",
+    subtitle = "In Japan",
+    y = "Average GDP",
+    x = "Average Female Labor Participation Rate",
+    caption = "Source: World Bank Data"
+  ) +
+  scale_x_continuous(labels = scales::percent_format(scale = 1))
+```
+
+```{r echo=FALSE}
+Brazil <- world_bank_data_exploration2 %>%
+  filter(`Country Name` == "Brazil") %>%
+  # creating decade column
+  mutate(decade = case_when(
+    Year >= 1990 & Year < 2000 ~ 1900,
+    Year >= 2000 & Year < 2010 ~ 2000,
+    Year >= 2010 ~ 2010
+  )) %>%
+  group_by(decade) %>%
+  summarise(
+    avg_GDP_per_decade = mean(`GDP (current US$)`, na.rm = TRUE),
+    avg_female_labor_per_decade =
+      mean(`Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)`, na.rm = TRUE)
+  )
+
+Japan %>%
+  ggplot(aes(
+    y = avg_GDP_per_decade,
+    x = avg_female_labor_per_decade,
+  )) +
+  geom_point() +
+  geom_smooth() +
+  labs(
+    title = "Avgerage Female Labor Participation versus Average GDP Per Decade",
+    subtitle = "In Brazil",
+    y = "Average GDP",
+    x = "Average Female Labor Participation Rate",
+    caption = "Source: World Bank Data"
+  )  +
+  scale_x_continuous(labels = scales::percent_format(scale = 1))
+```
+
+```{r echo=FALSE}
+Canada <- world_bank_data_exploration2 %>%
+  filter(`Country Name` == "Canada") %>%
+  mutate(decade = case_when(
+    Year >= 1990 & Year < 2000 ~ 1900,
+    Year >= 2000 & Year < 2010 ~ 2000,
+    Year >= 2010 ~ 2010
+  )) %>%
+  group_by(decade) %>%
+  summarise(avg_GDP_per_decade = mean(`GDP (current US$)`, na.rm = TRUE), avg_female_labor_per_decade = mean(`Labor force participation rate, female (% of female population ages 15-64) (modeled ILO estimate)`, na.rm = TRUE))
+
+Japan %>%
+  ggplot(aes(
+    y = avg_GDP_per_decade,
+    x = avg_female_labor_per_decade,
+  )) +
+  geom_point() +
+  geom_smooth() +
+  labs(
+    title = "Avgerage Female Labor Participation versus Average GDP Per Decade",
+    subtitle = "In Canada",
+    y = "Average GDP",
+    x = "Average Female Labor Participation Rate",
+    caption = "Source: World Bank Data"
+  ) +
+  scale_x_continuous(labels = scales::percent_format(scale = 1))
+```
+
+```{r echo=FALSE}
+ggplot(NULL, aes(avg_GDP_per_decade, avg_female_labor_per_decade)) +
+  geom_line(data = Japan, aes(color = "Japan")) +
+  geom_line(data = Brazil, aes(color = "Brazil")) +
+  geom_line(data = Canada, aes(color = "Canada")) +
+  labs(
+    title = "Avgerage Female Labor Participation versus Average GDP Per Decade",
+    subtitle = "In Countries: Brazil, Canada, Japan",
+    x = "Average GDP",
+    y = "Average Female Labor Participation Rate",
+    caption = "Source: World Bank Data",
+    color = "Legend"
+  ) +
+  scale_color_manual(
+    name = "",
+    breaks = c("Japan", "Brazil", "Canada"), values = c("pink", "purple", "blue")
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+```
+
+
+
+
+Grouping by decade and averaging my two variables of interest allowed me to analyze the relationship between female labor participation and GDP. As would be expected higher female labor participation is associated with higher GDP across a variety of different countries with different average GDP levels. 
+
+
+
+## Session info
+
+```{r}
+sessioninfo::session_info()
+```
